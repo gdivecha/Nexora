@@ -22,6 +22,6 @@ const commands = [builder.toJSON()];
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 rest.put(
-  Routes.applicationGuildCommands('1385445164067192882', '1385463508614905887'),
+  Routes.applicationGuildCommands('1385445164067192882', '1186852287075848232'),
   { body: commands }
 ).then(() => console.log('✅ Slash command registered.'));
