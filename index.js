@@ -1,4 +1,4 @@
-// ✅ FINAL index.js (with plain role names, no mentions)
+// ✅ FINAL index.js with formatted output
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 require('dotenv').config();
 
@@ -32,10 +32,7 @@ client.on('interactionCreate', async interaction => {
   }
 
   const roleIds = roleObjects.map(role => role.id);
-  const roleNames = roleIds.map(id => {
-    const role = interaction.guild.roles.cache.get(id);
-    return role ? role.name : `Unknown Role (${id})`;
-  });
+  const roleNames = roleObjects.map(role => `• ${role.name}`);
 
   const matches = interaction.guild.members.cache.filter(member =>
     roleIds.every(id => member.roles.cache.has(id))
@@ -45,7 +42,7 @@ client.on('interactionCreate', async interaction => {
     return interaction.reply('😕 No users found with all those roles.');
   }
 
-  let content = `👥 Members with all ${roleIds.length} roles: ${roleNames.join(', ')}\n`;
+  let content = `🏷️ ${roleObjects.length} Roles you selected:\n${roleNames.join('\n')}\n\n👥 Members with all ${roleObjects.length} roles:\n`;
 
   if (shouldPing) {
     const mentions = matches.map(m => `<@${m.id}>`).join(' ');
