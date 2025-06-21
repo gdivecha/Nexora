@@ -2,6 +2,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 
 const client = new Client({
@@ -29,7 +30,6 @@ client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   const command = client.commands.get(interaction.commandName);
-
   if (!command) return;
 
   try {
@@ -41,3 +41,10 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
+// 🟢 Keep alive server for Render
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (_, res) => res.send('Bot is running.'));
+app.listen(port, () => console.log(`🟢 Web server running on port ${port}`));
