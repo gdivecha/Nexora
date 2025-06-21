@@ -1,61 +1,43 @@
-// ✅ FINAL index.js with formatted output
-const { Client, GatewayIntentBits, Partials } = require('discord.js');
+// 📁 index.js (Handles all slash commands)
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers
-  ],
-  partials: [Partials.GuildMember]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
 
+client.commands = new Collection();
+
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+  const filePath = path.join(commandsPath, file);
+  const command = require(filePath);
+  if ('data' in command && 'execute' in command) {
+    client.commands.set(command.data.name, command);
+  }
+}
+
 client.once('ready', () => {
-  console.log(`✅ ${client.user.tag} is online with enhanced multi-role support!`);
+  console.log(`✅ ${client.user.tag} is online.`);
 });
 
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand() || interaction.commandName !== 'converge') return;
+  if (!interaction.isChatInputCommand()) return;
 
-  await interaction.guild.members.fetch();
+  const command = client.commands.get(interaction.commandName);
 
-  const roleObjects = [];
-  for (let i = 1; i <= 12; i++) {
-    const role = interaction.options.getRole(`role${i}`);
-    if (role) roleObjects.push(role);
+  if (!command) return;
+
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    await interaction.reply({ content: '❌ There was an error executing this command.', ephemeral: true });
   }
-
-  const shouldPing = interaction.options.getBoolean('ping');
-
-  if (roleObjects.length < 2) {
-    return interaction.reply({ content: '❌ You must provide at least two roles.', ephemeral: true });
-  }
-
-  const roleIds = roleObjects.map(role => role.id);
-  const roleNames = roleObjects.map(role => `• ${role.name}`);
-
-  const matches = interaction.guild.members.cache.filter(member =>
-    roleIds.every(id => member.roles.cache.has(id))
-  );
-
-  if (matches.size === 0) {
-    return interaction.reply('😕 No users found with all those roles.');
-  }
-
-  let content = `🏷️ ${roleObjects.length} Roles you selected:\n${roleNames.join('\n')}\n\n👥 Members with all ${roleObjects.length} roles:\n`;
-
-  if (shouldPing) {
-    const mentions = matches.map(m => `<@${m.id}>`).join(' ');
-    content += mentions;
-  } else {
-    const list = matches.map(m => `• ${m.user.tag}`).join('\n');
-    content += list;
-  }
-
-  return interaction.reply({
-    content,
-    allowedMentions: { users: shouldPing ? matches.map(m => m.id) : [] }
-  });
 });
 
 client.login(process.env.DISCORD_TOKEN);
