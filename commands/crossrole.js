@@ -27,7 +27,7 @@ module.exports = {
     const roleNames = `• ${role1.name}\n• ${role2.name}`;
     const userList = matches.map(m => `• ${m.user.tag}`).join('\n');
 
-    const content = `🏷️ Users with either of the roles:\n${roleNames}\n\n👥 Matched Members:\n${userList}`;
+    const content = `🏷️ Roles selected:\n${roleNames}\n\n👥 Users with either of the roles:\n${userList}`;
 
     return interaction.reply({ content });
   }
