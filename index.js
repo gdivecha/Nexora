@@ -1,41 +1,61 @@
+// ✅ NEW index.js (slash command based logic)
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 require('dotenv').config();
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.GuildMembers
   ],
   partials: [Partials.GuildMember]
 });
 
 client.once('ready', () => {
-  console.log(`✅ ${client.user.tag} is online!`);
+  console.log(`✅ ${client.user.tag} is online with enhanced multi-role support!`);
 });
 
-client.on('messageCreate', async (message) => {
-  if (!message.content.startsWith('!converge') || message.author.bot) return;
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand() || interaction.commandName !== 'converge') return;
 
-  const roleMentions = message.mentions.roles;
-  if (roleMentions.size < 2) {
-    return message.reply('⚠️ Please mention at least two roles.');
+  await interaction.guild.members.fetch();
+
+  const roleObjects = [];
+  for (let i = 1; i <= 12; i++) {
+    const role = interaction.options.getRole(`role${i}`);
+    if (role) roleObjects.push(role);
   }
 
-  await message.guild.members.fetch(); // Ensure member cache is populated
+  const shouldPing = interaction.options.getBoolean('ping');
 
-  const roleIds = roleMentions.map(r => r.id);
-  const matchingMembers = message.guild.members.cache.filter(member =>
-    roleIds.every(roleId => member.roles.cache.has(roleId))
+  if (roleObjects.length < 2) {
+    return interaction.reply({ content: '❌ You must provide at least two roles.', ephemeral: true });
+  }
+
+  const roleIds = roleObjects.map(role => role.id);
+  const roleNames = roleObjects.map(role => `<@&${role.id}>`);
+
+  const matches = interaction.guild.members.cache.filter(member =>
+    roleIds.every(id => member.roles.cache.has(id))
   );
 
-  if (matchingMembers.size === 0) {
-    return message.reply('😕 No members found with all those roles.');
+  if (matches.size === 0) {
+    return interaction.reply('😕 No users found with all those roles.');
   }
 
-  const mentions = matchingMembers.map(member => `<@${member.id}>`).join(' ');
-  message.channel.send(`👥 Members with all specified roles:\n${mentions}`);
+  let content = `👥 Members with **all of the following roles**: ${roleNames.join(', ')}\n`;
+
+  if (shouldPing) {
+    const mentions = matches.map(m => `<@${m.id}>`).join(' ');
+    content += mentions;
+  } else {
+    const list = matches.map(m => `• ${m.user.tag}`).join('\n');
+    content += list;
+  }
+
+  return interaction.reply({
+    content,
+    allowedMentions: { users: shouldPing ? matches.map(m => m.id) : [] }
+  });
 });
 
 client.login(process.env.DISCORD_TOKEN);
