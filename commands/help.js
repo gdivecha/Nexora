@@ -42,7 +42,7 @@ module.exports = {
 **Output:** Shows roles **only user1** has, **only user2** has, and roles they **both share**.
 **Example:**
 \`/rolediff user1: @Alice user2: @Bob\``
-        }
+        },
         { name: '\u200B', value: '\u200B' }
       )
       .setFooter({ text: 'Use these commands to manage and analyze community roles with precision.' });
