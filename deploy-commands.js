@@ -1,9 +1,14 @@
+// ✅ FINAL deploy-commands.js with deduplication logic
 require('dotenv').config();
-const { REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
-// --- Manually define converge command ---
+// Manually defined commands (converge, crossrole, rolediff)
+const manualCommands = [];
+
+const { SlashCommandBuilder } = require('discord.js');
+
 const convergeCommand = new SlashCommandBuilder()
   .setName('converge')
   .setDescription('Find and optionally ping users with multiple roles')
@@ -17,8 +22,8 @@ for (let i = 3; i <= 12; i++) {
   convergeCommand.addRoleOption(option =>
     option.setName(`role${i}`).setDescription(`Optional role ${i}`).setRequired(false));
 }
+manualCommands.push(convergeCommand);
 
-// --- Manually define crossrole command ---
 const crossroleCommand = new SlashCommandBuilder()
   .setName('crossrole')
   .setDescription('Find users with ANY of the selected roles')
@@ -30,8 +35,8 @@ for (let i = 3; i <= 10; i++) {
   crossroleCommand.addRoleOption(option =>
     option.setName(`role${i}`).setDescription(`Optional role ${i}`).setRequired(false));
 }
+manualCommands.push(crossroleCommand);
 
-// --- Manually define rolediff command ---
 const rolediffCommand = new SlashCommandBuilder()
   .setName('rolediff')
   .setDescription('Compare role differences between two users')
@@ -39,8 +44,9 @@ const rolediffCommand = new SlashCommandBuilder()
     option.setName('user1').setDescription('First user').setRequired(true))
   .addUserOption(option =>
     option.setName('user2').setDescription('Second user').setRequired(true));
+manualCommands.push(rolediffCommand);
 
-// --- Load all commands from /commands folder (like /help, /postjob, etc.) ---
+// Load all command files from /commands directory
 const folderCommands = [];
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -48,21 +54,21 @@ const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('
 for (const file of commandFiles) {
   const command = require(path.join(commandsPath, file));
   if (command.data && typeof command.data.toJSON === 'function') {
-    folderCommands.push(command.data.toJSON());
+    // Skip if already manually defined (to avoid duplicates)
+    if (!manualCommands.some(c => c.name === command.data.name)) {
+      folderCommands.push(command.data);
+    } else {
+      console.warn(`⚠️ Skipped duplicate command: ${command.data.name}`);
+    }
   } else {
-    console.warn(`⚠️ Skipped "${file}" – invalid or missing .data.toJSON()`);
+    console.warn(`⚠️ Invalid command file: ${file}`);
   }
 }
 
-// --- Combine manual and folder-based commands ---
-const allCommands = [
-  convergeCommand.toJSON(),
-  crossroleCommand.toJSON(),
-  rolediffCommand.toJSON(),
-  ...folderCommands
-];
+// Combine manual and folder-based commands
+const allCommands = [...manualCommands, ...folderCommands].map(cmd => cmd.toJSON());
 
-// --- Deploy to guild ---
+// Deploy to Discord
 (async () => {
   const { DISCORD_CLIENT_ID, DISCORD_GUILD_ID, DISCORD_TOKEN } = process.env;
 
@@ -74,13 +80,13 @@ const allCommands = [
   const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
 
   try {
-    console.log(`🔁 Deploying ${allCommands.length} slash command(s) to ${DISCORD_GUILD_ID}...`);
+    console.log(`🔁 Deploying ${allCommands.length} slash command(s) to guild ${DISCORD_GUILD_ID}...`);
     await rest.put(
       Routes.applicationGuildCommands(DISCORD_CLIENT_ID, DISCORD_GUILD_ID),
       { body: allCommands }
     );
-    console.log(`✅ Successfully deployed all commands: ${commandFiles.map(f => '/' + f.replace('.js', '')).join(', ')}, plus converge/crossrole/rolediff`);
-  } catch (err) {
-    console.error('❌ Error deploying commands:', err);
+    console.log(`✅ Successfully deployed slash commands.`);
+  } catch (error) {
+    console.error('❌ Error deploying commands:', error);
   }
 })();
